@@ -1,40 +1,47 @@
 use std::io;
 use serde::Deserialize;
-use colored::*;
 
-#[dervie(Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 struct WeatherResponse{
-    weather: Vec<Weather>,
-    main: Main,
+    weather: Vec<WeatherDesc>,
+    main: WeatherParameters,
     wind: Wind,
     name: String,
 }
 
-#[dervie(Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 struct WeatherDesc{
     description: String,
 
 }
 
-#[dervie(Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 struct WeatherParameters{
     temp: f64,
     pressure: f64,
     humidity: f64,
 }
 
-#[dervie(Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 struct Wind{
     speed:f64,
 }
 
 fn get_weather(city: &str, api_key: &str) ->
-    Result<WeatherRespone, reqwest::Error>{
-    let url: string = format!( "https://api.openweathermap.org/data/2.5/weather?q={}&appid={}&units=metric", city, api);
+    Result<WeatherResponse, reqwest::Error>{
+    let url: String = format!( "https://api.openweathermap.org/data/2.5/weather?q={}&appid={}&units=metric", city, api_key);
     let resp = reqwest::blocking::get(&url)?;
-    let respone_json: WeatherResponse = Response.json::<WeatherResponse>()?;
-    Ok(respone_json);
+    let response_json: WeatherResponse = resp.json::<WeatherResponse>()?;
+    Ok(response_json)
 
+}
+
+fn display_weather_info(response: &WeatherResponse){
+    let description: &String = &response.weather[0].description;
+    let temperature: f64 = response.main.temp;
+    let humidity: f64 = response.main.humidity;
+    let pressure: f64 = response.main.pressure;
+    let wind_speed: f64 = response.wind.speed;
 }
 fn main() {
 
