@@ -1,4 +1,6 @@
-use std::io;
+use iced::{
+    Alignment, Backward, Sandbox, Settings,
+};
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -43,8 +45,15 @@ fn display_weather_info(response: &WeatherResponse){
     let pressure: f64 = response.main.pressure;
     let wind_speed: f64 = response.wind.speed;
 }
-fn main() {
 
-    
+struct RustUI{
+    theme: Theme,
+    city_field: CityField
+}
+
+struct CityField {city: String}
+fn main() -> iced::Result{
+
+    RustUI::run(Settings::default())
     
 }
