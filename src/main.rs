@@ -1,10 +1,12 @@
 use iced::{
-    Alignment, Backward, Sandbox, Settings,
+    Alignment, Application, Command, Element, Settings,
+    widget::{Button, Column, Text, TextInput}, button, text_input,
 };
 use serde::Deserialize;
+use reqwest;
 
 #[derive(Deserialize, Debug)]
-struct WeatherResponse{
+struct WeatherResponse {
     weather: Vec<WeatherDesc>,
     main: WeatherParameters,
     wind: Wind,
@@ -12,48 +14,127 @@ struct WeatherResponse{
 }
 
 #[derive(Deserialize, Debug)]
-struct WeatherDesc{
+struct WeatherDesc {
     description: String,
-
 }
 
 #[derive(Deserialize, Debug)]
-struct WeatherParameters{
+struct WeatherParameters {
     temp: f64,
     pressure: f64,
     humidity: f64,
 }
 
 #[derive(Deserialize, Debug)]
-struct Wind{
-    speed:f64,
+struct Wind {
+    speed: f64,
 }
 
-fn get_weather(city: &str, api_key: &str) ->
-    Result<WeatherResponse, reqwest::Error>{
-    let url: String = format!( "https://api.openweathermap.org/data/2.5/weather?q={}&appid={}&units=metric", city, api_key);
+fn get_weather(city: &str, api_key: &str) -> Result<WeatherResponse, reqwest::Error> {
+    let url: String = format!(
+        "https://api.openweathermap.org/data/2.5/weather?q={}&appid={}&units=metric",
+        city, api_key
+    );
     let resp = reqwest::blocking::get(&url)?;
     let response_json: WeatherResponse = resp.json::<WeatherResponse>()?;
     Ok(response_json)
-
 }
 
-fn display_weather_info(response: &WeatherResponse){
-    let description: &String = &response.weather[0].description;
-    let temperature: f64 = response.main.temp;
-    let humidity: f64 = response.main.humidity;
-    let pressure: f64 = response.main.pressure;
-    let wind_speed: f64 = response.wind.speed;
+#[derive(Default)]
+pub struct WeatherApp {
+    city_field: String,
+    weather_data: Option<WeatherResponse>,
+    city_input_state: text_input::State,
+    button_state: button::State,
 }
 
-struct RustUI{
-    theme: Theme,
-    city_field: CityField
+#[derive(Debug, Clone)]
+pub enum Message {
+    GetWeather,
+    CityChanged(String),
 }
 
-struct CityField {city: String}
-fn main() -> iced::Result{
+impl Application for WeatherApp {
+    type Executor = iced::executor::Default;
+    type Message = Message;
+    type Flags = ();
 
-    RustUI::run(Settings::default())
-    
+    fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
+        (WeatherApp::default(), Command::none())
+    }
+
+    fn title(&self) -> String {
+        String::from("Weather App")
+    }
+
+    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
+        match message {
+            Message::GetWeather => {
+                if !self.city_field.is_empty() {
+                    let api_key = "967a1be7a23f1be26b72e6d3a172bc8e"; 
+                    match get_weather(&self.city_field, api_key) {
+                        Ok(weather) => self.weather_data = Some(weather),
+                        Err(_) => {
+                            self.weather_data = None;
+                        }
+                    }
+                }
+                Command::none()
+            }
+            Message::CityChanged(city) => {
+                self.city_field = city;
+                Command::none()
+            }
+        }
+    }
+
+    fn view(&mut self) -> Element<Self::Message> {
+        let city_input = TextInput::new(
+            &mut self.city_input_state,
+            "Enter city name",
+            &self.city_field,
+            Message::CityChanged,
+        )
+        .padding(10)
+        .size(30);
+
+        let get_weather_button = Button::new(
+            &mut self.button_state,
+            Text::new("Get Weather")
+        ).on_press(Message::GetWeather)
+        .padding(10);
+
+        let weather_display = match &self.weather_data {
+            Some(weather) => {
+                Column::new()
+                    .push(Text::new(format!("City: {}", weather.name)))
+                    .push(Text::new(format!("Description: {}", weather.weather[0].description)))
+                    .push(Text::new(format!("Temperature: {:.2} °C", weather.main.temp)))
+                    .push(Text::new(format!("Humidity: {:.2} %", weather.main.humidity)))
+                    .push(Text::new(format!("Pressure: {:.2} hPa", weather.main.pressure)))
+                    .push(Text::new(format!("Wind Speed: {:.2} m/s", weather.wind.speed)))
+            }
+            None => Column::new().push(Text::new("Enter a city and press 'Get Weather'")),
+        };
+
+        Column::new()
+            .align_items(Alignment::Center)
+            .padding(20)
+            .push(city_input)
+            .push(get_weather_button)
+            .push(weather_display)
+            .into()
+    }
+}
+
+fn main() -> iced::Result {
+    let settings = Settings {
+        window: iced::window::Settings {
+            size: (400, 400),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    WeatherApp::run(settings)
 }
